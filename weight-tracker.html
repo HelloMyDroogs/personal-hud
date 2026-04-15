@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FITNESS // TRACKER</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+    /* ── DESIGN TOKENS ── */
+    :root {
+      --void:         #090014;
+      --card-bg:      rgba(26, 16, 60, 0.85);
+      --magenta:      #FF00FF;
+      --cyan:         #00FFFF;
+      --orange:       #FF9900;
+      --border:       #2D1B4E;
+      --fg:           #E0E0E0;
+      --font-head:    'Orbitron', sans-serif;
+      --font-mono:    'Share Tech Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--void);
+      color: var(--fg);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── CRT SCANLINES (fixed overlay) ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(rgba(18,16,20,0) 50%, rgba(0,0,0,0.22) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── RGB CHROMATIC ABERRATION ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(255,0,0,0.025), rgba(0,255,0,0.01), rgba(0,0,255,0.025));
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* ── FLOATING SUN ── */
+    .sun-orb {
+      position: fixed;
+      top: -220px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: linear-gradient(to bottom, #FF9900, #FF00FF);
+      filter: blur(100px);
+      opacity: 0.14;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── PERSPECTIVE GRID FLOOR ── */
+    .grid-bg {
+      position: fixed;
+      bottom: 0;
+      left: -20%;
+      right: -20%;
+      height: 55vh;
+      background-image:
+        linear-gradient(transparent 95%, rgba(255, 0, 255, 0.35) 95%),
+        linear-gradient(90deg, transparent 95%, rgba(255, 0, 255, 0.35) 95%);
+      background-size: 40px 40px;
+      transform: perspective(600px) rotateX(65deg) translateY(20px);
+      transform-origin: bottom center;
+      mask-image: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── LAYOUT ── */
+    .app {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1.25rem 5rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      text-align: center;
+      padding-bottom: 1.5rem;
+      position: relative;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(to right, var(--orange), var(--magenta), var(--cyan));
+    }
+
+    .header h1 {
+      font-family: var(--font-head);
+      font-size: 2.1rem;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      background: linear-gradient(to right, #FF9900, #FF00FF, #00FFFF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 24px rgba(255, 0, 255, 0.55));
+      line-height: 1.1;
+    }
+
+    .header .subtitle {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.35em;
+      color: rgba(224, 224, 224, 0.4);
+      margin-top: 0.5rem;
+      text-transform: uppercase;
+    }
+
+    /* ── TABS ── */
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border: 2px solid var(--border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-right: 2px solid var(--border);
+      color: rgba(224, 224, 224, 0.35);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      padding: 0.8rem 0;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s ease-linear;
+      position: relative;
+    }
+    .tab-btn:last-child { border-right: none; }
+    .tab-btn:hover {
+      color: var(--cyan);
+      background: rgba(0, 255, 255, 0.05);
+    }
+    .tab-btn.active {
+      color: var(--cyan);
+      background: rgba(0, 255, 255, 0.08);
+      text-shadow: 0 0 12px var(--cyan);
+    }
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    /* ── PANELS ── */
+    .panel { display: none; flex-direction: column; gap: 1.5rem; }
+    .panel.active { display: flex; }
+
+    /* ── DATE DISPLAY ── */
+    .date-display {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: rgba(224, 224, 224, 0.4);
+      text-transform: uppercase;
+    }
+
+    /* ── WINDOW CHROME (shared) ── */
+    .win-chrome {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.9rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      background: rgba(0, 0, 0, 0.3);
+    }
+    .win-dots { display: flex; gap: 6px; }
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .dot-m { background: var(--magenta); box-shadow: 0 0 5px var(--magenta); }
+    .dot-c { background: var(--cyan);    box-shadow: 0 0 5px var(--cyan); }
+    .dot-o { background: var(--orange);  box-shadow: 0 0 5px var(--orange); }
+    .win-label {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.25em;
+      color: rgba(224, 224, 224, 0.3);
+      text-transform: uppercase;
+      flex: 1;
+      text-align: center;
+    }
+
+    /* ── READOUTS ── */
+    .readouts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .readout-box {
+      border: 1px solid rgba(255, 0, 255, 0.25);
+      border-top: 2px solid var(--cyan);
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+
+    .readout-body {
+      padding: 1.2rem 1rem 1.4rem;
+      text-align: center;
+    }
+
+    .readout-label {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.4em;
+      color: rgba(224, 224, 224, 0.4);
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+
+    .readout-value {
+      font-family: var(--font-head);
+      font-size: 2.6rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--cyan);
+      text-shadow: 0 0 18px rgba(0, 255, 255, 0.65);
+      line-height: 1;
+    }
+
+    .readout-unit {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.35em;
+      color: rgba(255, 0, 255, 0.65);
+      margin-top: 0.4rem;
+      text-transform: uppercase;
+    }
+
+    /* ── INPUT SECTION ── */
+    .input-section {
+      border: 1px solid rgba(255, 0, 255, 0.3);
+      border-top: 2px solid var(--magenta);
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+
+    .input-body {
+      padding: 1.2rem 1.3rem 1.4rem;
+    }
+
+    .input-prompt {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      color: rgba(255, 0, 255, 0.7);
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .input-prompt::before { content: '> '; }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: stretch;
+    }
+
+    input[type="number"] {
+      flex: 1;
+      background: #000;
+      border: none;
+      border-bottom: 2px solid var(--magenta);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      padding: 0.55rem 0.8rem;
+      outline: none;
+      letter-spacing: 0.1em;
+      transition: all 0.2s ease-linear;
+      -moz-appearance: textfield;
+    }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    input[type="number"]::placeholder { color: rgba(255, 0, 255, 0.25); }
+    input[type="number"]:focus {
+      border-bottom-color: var(--cyan);
+      box-shadow: 0 6px 20px rgba(0, 255, 255, 0.2);
+    }
+
+    /* ── SKEWED LOG BUTTON ── */
+    .log-btn-outer {
+      display: flex;
+      align-items: center;
+      transform: skewX(-12deg);
+      transition: transform 0.2s ease-linear;
+    }
+    .log-btn-outer:hover { transform: skewX(0deg); }
+
+    .log-btn {
+      background: transparent;
+      border: 2px solid var(--cyan);
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.25em;
+      padding: 0.55rem 1.3rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s ease-linear;
+      white-space: nowrap;
+    }
+    .log-btn span { display: inline-block; transform: skewX(12deg); }
+    .log-btn:hover {
+      background: var(--cyan);
+      color: #000;
+      box-shadow: 0 0 25px var(--cyan), 0 0 50px rgba(0, 255, 255, 0.3);
+    }
+
+    /* ── STATUS SECTION ── */
+    .status-section {
+      border: 2px solid var(--cyan);
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 0 40px rgba(0, 255, 255, 0.12), inset 0 0 30px rgba(0, 255, 255, 0.03);
+      overflow: hidden;
+    }
+
+    .status-titlebar {
+      background: rgba(0, 255, 255, 0.07);
+      border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+    }
+
+    .status-body {
+      padding: 2rem 1.5rem 1.5rem;
+      text-align: center;
+    }
+
+    .status-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.5em;
+      color: rgba(224, 224, 224, 0.35);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .status-value {
+      font-family: var(--font-head);
+      font-size: 3.5rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      line-height: 1;
+      transition: all 0.3s ease-linear;
+    }
+
+    .status-value.extra {
+      color: var(--cyan);
+      text-shadow: 0 0 15px var(--cyan), 0 0 45px rgba(0, 255, 255, 0.45);
+    }
+    .status-value.normal {
+      font-size: 4.8rem;
+      background: linear-gradient(to right, #FF9900, #FF00FF, #00FFFF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 18px rgba(255, 0, 255, 0.75));
+    }
+    .status-value.fast {
+      color: var(--magenta);
+      text-shadow: 0 0 15px var(--magenta), 0 0 45px rgba(255, 0, 255, 0.5);
+    }
+    .status-value.idle {
+      color: rgba(224, 224, 224, 0.12);
+      font-size: 3.5rem;
+    }
+
+    .delta-display {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.2em;
+      color: rgba(224, 224, 224, 0.45);
+      margin-top: 1rem;
+      min-height: 1.2em;
+      text-transform: uppercase;
+    }
+
+    .status-bar {
+      background: rgba(0, 0, 0, 0.5);
+      border-top: 1px solid rgba(0, 255, 255, 0.15);
+      padding: 0.35rem 0.9rem;
+      display: flex;
+      justify-content: space-between;
+    }
+    .status-bar-text {
+      font-family: var(--font-mono);
+      font-size: 0.52rem;
+      letter-spacing: 0.2em;
+      color: rgba(224, 224, 224, 0.2);
+      text-transform: uppercase;
+    }
+
+    /* ── HISTORY ── */
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.35em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    .section-title::before { content: '> '; color: var(--magenta); }
+
+    /* Skewed clear button */
+    .clear-btn-outer {
+      transform: skewX(-12deg);
+      transition: transform 0.2s ease-linear;
+      display: inline-flex;
+    }
+    .clear-btn-outer:hover { transform: skewX(0deg); }
+
+    .clear-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 69, 0, 0.4);
+      color: rgba(255, 69, 0, 0.55);
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      padding: 0.28rem 0.7rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s ease-linear;
+    }
+    .clear-btn span { display: inline-block; transform: skewX(12deg); }
+    .clear-btn:hover {
+      border-color: #ff4500;
+      color: #ff4500;
+      box-shadow: 0 0 12px rgba(255, 69, 0, 0.4);
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      max-height: 400px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--magenta) transparent;
+    }
+    .history-list::-webkit-scrollbar { width: 3px; }
+    .history-list::-webkit-scrollbar-thumb { background: var(--magenta); }
+
+    .history-entry {
+      border: 1px solid rgba(255, 0, 255, 0.15);
+      border-left: 3px solid var(--magenta);
+      background: rgba(26, 16, 60, 0.55);
+      padding: 0.85rem 1rem;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 0.4rem 0.8rem;
+      align-items: center;
+      transition: all 0.2s ease-linear;
+    }
+    .history-entry:hover {
+      border-left-color: var(--cyan);
+      background: rgba(0, 255, 255, 0.04);
+      box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.04);
+    }
+
+    .entry-date {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      color: rgba(224, 224, 224, 0.35);
+      grid-column: 1 / -1;
+      text-transform: uppercase;
+    }
+
+    .entry-weight {
+      font-family: var(--font-head);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+      letter-spacing: 0.08em;
+    }
+
+    .entry-range {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: rgba(224, 224, 224, 0.25);
+      letter-spacing: 0.08em;
+      text-align: right;
+    }
+
+    .entry-status {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-align: right;
+      text-transform: uppercase;
+    }
+    .entry-status.extra  { color: var(--cyan);    text-shadow: 0 0 6px rgba(0,255,255,0.5); }
+    .entry-status.normal { color: var(--magenta); text-shadow: 0 0 6px rgba(255,0,255,0.5); }
+    .entry-status.fast   { color: var(--orange);  text-shadow: 0 0 6px rgba(255,153,0,0.5); }
+
+    .entry-sleep {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding-top: 0.35rem;
+      border-top: 1px solid rgba(255,0,255,0.08);
+      margin-top: 0.1rem;
+    }
+    .entry-sleep-hours {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--cyan);
+      letter-spacing: 0.08em;
+    }
+    .entry-sleep-eff {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+    }
+    .entry-sleep-stages {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: rgba(224,224,224,0.35);
+      letter-spacing: 0.05em;
+    }
+    .entry-sleep-bar {
+      flex: 1;
+      min-width: 60px;
+      height: 4px;
+      border-radius: 2px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.06);
+      display: flex;
+    }
+    .entry-sleep-bar .seg-deep  { background: #6366f1; height: 100%; }
+    .entry-sleep-bar .seg-rem   { background: var(--cyan); height: 100%; opacity: 0.8; }
+    .entry-sleep-bar .seg-light { background: #38bdf8; height: 100%; opacity: 0.5; }
+    .entry-sleep-bar .seg-wake  { background: rgba(255,255,255,0.15); height: 100%; }
+
+    .history-empty {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.25em;
+      color: rgba(224, 224, 224, 0.18);
+      padding: 3rem 0;
+      border: 1px solid var(--border);
+      text-transform: uppercase;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.2em;
+      color: rgba(224, 224, 224, 0.18);
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+      text-transform: uppercase;
+    }
+
+    /* ── BLINK CURSOR ── */
+    .blink { animation: blink 1.2s step-end infinite; }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* ── SLEEP PANEL ── */
+    .sleep-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      border: 2px solid var(--border);
+      padding: 1rem;
+    }
+    .sleep-ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .sleep-ctrl-label {
+      font-size: 0.65rem;
+      color: rgba(224,224,224,0.4);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .sleep-btn {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: transparent;
+      border: 1.5px solid var(--magenta);
+      color: var(--magenta);
+      padding: 0.35rem 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sleep-btn:hover { background: rgba(255,0,255,0.12); box-shadow: 0 0 10px rgba(255,0,255,0.3); }
+    .sleep-btn.cyan { border-color: var(--cyan); color: var(--cyan); }
+    .sleep-btn.cyan:hover { background: rgba(0,255,255,0.08); box-shadow: 0 0 10px rgba(0,255,255,0.3); }
+    .sleep-btn.danger { border-color: #ff4040; color: #ff4040; font-size: 0.63rem; }
+    .sleep-btn.danger:hover { background: rgba(255,64,64,0.1); }
+    .sleep-file-input { display: none; }
+    .sleep-status {
+      font-size: 0.65rem;
+      color: var(--orange);
+      letter-spacing: 0.08em;
+      min-height: 1em;
+    }
+    .drive-file-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0.6rem;
+      border: 1px solid var(--border);
+      margin-top: 4px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .drive-file-row:hover { background: rgba(0,255,255,0.06); border-color: var(--cyan); }
+    .drive-file-name { font-size: 0.7rem; color: var(--cyan); }
+    .drive-file-size { font-size: 0.62rem; color: rgba(224,224,224,0.35); }
+    .sleep-entry {
+      border: 1px solid var(--border);
+      padding: 0.65rem 0.75rem;
+      margin-bottom: 6px;
+    }
+    .sleep-row-top {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.4rem;
+    }
+    .sleep-date {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: rgba(224,224,224,0.55);
+      min-width: 90px;
+    }
+    .sleep-hours {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--cyan);
+      text-shadow: 0 0 8px rgba(0,255,255,0.4);
+    }
+    .sleep-weight {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      margin-left: auto;
+    }
+    .sleep-weight.normal { color: var(--cyan); }
+    .sleep-weight.extra  { color: #a78bfa; }
+    .sleep-weight.fast   { color: var(--magenta); }
+    .sleep-weight.none   { color: rgba(224,224,224,0.25); }
+    .stages-bar {
+      display: flex;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.06);
+      margin: 0.35rem 0 0.25rem;
+    }
+    .stage-seg { height: 100%; transition: width 0.3s; }
+    .stage-seg.deep  { background: #6366f1; }
+    .stage-seg.rem   { background: var(--cyan); }
+    .stage-seg.light { background: #38bdf8; opacity: 0.65; }
+    .stage-seg.wake  { background: rgba(255,255,255,0.2); }
+    .stages-legend { display: flex; gap: 0.75rem; margin-top: 0.1rem; }
+    .sl { font-size: 0.6rem; letter-spacing: 0.06em; opacity: 0.7; }
+    .sl.deep  { color: #818cf8; }
+    .sl.rem   { color: var(--cyan); }
+    .sl.light { color: #7dd3fc; }
+    .sl.wake  { color: rgba(224,224,224,0.45); }
+    #sleep-drive-picker { margin-top: 0.5rem; }
+    .sleep-msg { font-size: 0.68rem; color: var(--orange); letter-spacing: 0.06em; margin-bottom: 4px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 480px) {
+      .header h1 { font-size: 1.6rem; }
+      .readout-value { font-size: 2rem; }
+      .status-value { font-size: 2.8rem; }
+      .status-value.normal { font-size: 3.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BACKGROUND LAYERS -->
+  <div class="sun-orb"></div>
+  <div class="grid-bg"></div>
+
+  <div class="app">
+    <div class="container">
+
+      <!-- ── HEADER ── -->
+      <div class="header">
+        <h1>FITNESS // TRACKER</h1>
+        <div class="subtitle">BIOMETRIC MONITORING SYSTEM v2.0</div>
+      </div>
+
+      <!-- ── TABS ── -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('today')">// TODAY</button>
+        <button class="tab-btn"        onclick="switchTab('history')">// HISTORY</button>
+        <button class="tab-btn"        onclick="switchTab('sleep')">// SLEEP</button>
+      </div>
+
+      <!-- ════ TODAY PANEL ════ -->
+      <div class="panel active" id="panel-today">
+
+        <div class="date-display" id="dateDisplay">-- INITIALIZING --</div>
+
+        <!-- Readout cards -->
+        <div class="readouts">
+          <div class="readout-box">
+            <div class="win-chrome">
+              <div class="win-dots">
+                <div class="dot dot-m"></div>
+                <div class="dot dot-c"></div>
+                <div class="dot dot-o"></div>
+              </div>
+              <span class="win-label">BASE</span>
+            </div>
+            <div class="readout-body">
+              <div class="readout-label">Baseline</div>
+              <div class="readout-value" id="baselineVal">--.-</div>
+              <div class="readout-unit">LBS</div>
+            </div>
+          </div>
+
+          <div class="readout-box">
+            <div class="win-chrome">
+              <div class="win-dots">
+                <div class="dot dot-m"></div>
+                <div class="dot dot-c"></div>
+                <div class="dot dot-o"></div>
+              </div>
+              <span class="win-label">MAX</span>
+            </div>
+            <div class="readout-body">
+              <div class="readout-label">Maximum</div>
+              <div class="readout-value" id="maximumVal">--.-</div>
+              <div class="readout-unit">LBS</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input -->
+        <div class="input-section">
+          <div class="win-chrome">
+            <div class="win-dots">
+              <div class="dot dot-m"></div>
+              <div class="dot dot-c"></div>
+              <div class="dot dot-o"></div>
+            </div>
+            <span class="win-label">INPUT TERMINAL</span>
+          </div>
+          <div class="input-body">
+            <div class="input-prompt">Enter Current Weight</div>
+            <div class="input-row">
+              <input type="number" id="weightInput" placeholder="0.0" step="0.1" min="0" />
+              <div class="log-btn-outer">
+                <button class="log-btn" onclick="checkWeight()"><span>LOG</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div class="status-section">
+          <div class="status-titlebar win-chrome">
+            <div class="win-dots">
+              <div class="dot dot-m"></div>
+              <div class="dot dot-c"></div>
+              <div class="dot dot-o"></div>
+            </div>
+            <span class="win-label">STATUS MONITOR</span>
+          </div>
+          <div class="status-body">
+            <div class="status-label">// Biometric Status</div>
+            <div class="status-value idle" id="statusValue">----<span class="blink">_</span></div>
+            <div class="delta-display" id="deltaDisplay">&nbsp;</div>
+          </div>
+          <div class="status-bar">
+            <span class="status-bar-text">SYSTEM READY</span>
+            <span class="status-bar-text">ORIGIN: 202.0 LBS</span>
+          </div>
+        </div>
+
+      </div><!-- /panel-today -->
+
+      <!-- ════ HISTORY PANEL ════ -->
+      <div class="panel" id="panel-history">
+
+        <div class="history-header">
+          <span class="section-title">Entry Log</span>
+          <div class="clear-btn-outer">
+            <button class="clear-btn" onclick="clearHistory()"><span>CLEAR ALL</span></button>
+          </div>
+        </div>
+
+        <div id="historyList"></div>
+
+      </div><!-- /panel-history -->
+
+      <!-- ════ SLEEP PANEL ════ -->
+      <div class="panel" id="panel-sleep">
+
+        <div class="sleep-controls">
+          <div class="win-chrome">
+            <div class="win-dots">
+              <div class="dot dot-m"></div>
+              <div class="dot dot-c"></div>
+              <div class="dot dot-o"></div>
+            </div>
+            <span class="win-label">DATA SOURCE</span>
+          </div>
+
+          <!-- Google Drive -->
+          <div class="sleep-ctrl-row">
+            <span class="sleep-ctrl-label">Google Drive</span>
+            <button class="sleep-btn" onclick="connectDrive()">Connect &amp; Browse</button>
+          </div>
+          <div id="sleep-drive-picker"></div>
+
+          <!-- Manual import -->
+          <div class="sleep-ctrl-row">
+            <span class="sleep-ctrl-label">Import File</span>
+            <button class="sleep-btn cyan" onclick="document.getElementById('sleepFileInput').click()">Upload Fitbit Export</button>
+            <input class="sleep-file-input" type="file" id="sleepFileInput" accept=".json,.csv" onchange="importSleepFile(this)">
+          </div>
+
+          <div id="sleep-status" class="sleep-status"></div>
+
+          <div class="sleep-ctrl-row" style="justify-content:flex-end">
+            <button class="sleep-btn danger" onclick="clearSleepData()">Clear Sleep Data</button>
+          </div>
+        </div>
+
+        <div id="sleep-list"></div>
+
+      </div><!-- /panel-sleep -->
+
+      <!-- ── FOOTER ── -->
+      <div class="footer">
+        BASELINE ORIGIN: 202.0 LBS &nbsp;|&nbsp; DELTA: +0.1 LBS / DAY
+      </div>
+
+    </div><!-- /container -->
+  </div><!-- /app -->
+
+  <script>
+    const ORIGIN_DATE     = new Date('2026-04-12');
+    const ORIGIN_WEIGHT   = 202.0;
+    const DAILY_INCREMENT = 0.1;
+    const MAX_OFFSET      = 2.0;
+    const STORAGE_KEY     = 'weightTrackerHistory';
+
+    /* ── helpers ── */
+    function getDaysSinceOrigin(date) {
+      const d = new Date(date || Date.now());
+      d.setHours(0, 0, 0, 0);
+      const o = new Date(ORIGIN_DATE);
+      o.setHours(0, 0, 0, 0);
+      return Math.floor((d - o) / 86400000);
+    }
+
+    function baselineForDate(date) {
+      return parseFloat((ORIGIN_WEIGHT + getDaysSinceOrigin(date) * DAILY_INCREMENT).toFixed(1));
+    }
+
+    function getBaseline() { return baselineForDate(new Date()); }
+
+    function classify(weight, baseline) {
+      const max = parseFloat((baseline + MAX_OFFSET).toFixed(1));
+      if (weight < baseline) return 'extra';
+      if (weight <= max)     return 'normal';
+      return 'fast';
+    }
+
+    /* ── storage ── */
+    function loadHistory() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+      catch { return []; }
+    }
+
+    function saveHistory(entries) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+
+    function addEntry(weight) {
+      const entries  = loadHistory();
+      const now      = new Date();
+      const baseline = getBaseline();
+      entries.unshift({
+        ts:       now.toISOString(),
+        weight:   weight,
+        baseline: baseline,
+        max:      parseFloat((baseline + MAX_OFFSET).toFixed(1)),
+        status:   classify(weight, baseline)
+      });
+      saveHistory(entries);
+    }
+
+    function clearHistory() {
+      if (!confirm('Clear all history entries?')) return;
+      saveHistory([]);
+      renderHistory();
+    }
+
+    /* ── today panel ── */
+    function updateReadouts() {
+      const baseline = getBaseline();
+      const maximum  = parseFloat((baseline + MAX_OFFSET).toFixed(1));
+      document.getElementById('baselineVal').textContent = baseline.toFixed(1);
+      document.getElementById('maximumVal').textContent  = maximum.toFixed(1);
+      const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('dateDisplay').textContent =
+        '// ' + new Date().toLocaleDateString('en-US', opts).toUpperCase();
+    }
+
+    function checkWeight() {
+      const input = document.getElementById('weightInput');
+      const raw   = parseFloat(input.value);
+      if (isNaN(raw) || raw <= 0) { input.focus(); return; }
+
+      const current  = parseFloat(raw.toFixed(1));
+      const baseline = getBaseline();
+      const maximum  = parseFloat((baseline + MAX_OFFSET).toFixed(1));
+      const diff     = parseFloat((current - baseline).toFixed(1));
+      const status   = classify(current, baseline);
+
+      const statusEl = document.getElementById('statusValue');
+      const deltaEl  = document.getElementById('deltaDisplay');
+
+      let statusText, deltaText;
+      if (status === 'extra') {
+        statusText = 'EXTRA';
+        deltaText  = `${Math.abs(diff).toFixed(1)} LBS BELOW BASELINE`;
+      } else if (status === 'normal') {
+        statusText = 'NORMAL';
+        deltaText  = `${diff.toFixed(1)} LBS ABOVE BASELINE`;
+      } else {
+        statusText = 'FAST';
+        const over = parseFloat((current - maximum).toFixed(1));
+        deltaText  = `${over.toFixed(1)} LBS ABOVE MAXIMUM`;
+      }
+
+      statusEl.className  = `status-value ${status}`;
+      statusEl.textContent = statusText;
+      deltaEl.textContent  = deltaText;
+
+      addEntry(current);
+    }
+
+    /* ── history panel ── */
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+      const entries   = loadHistory();
+
+      if (entries.length === 0) {
+        container.innerHTML = '<div class="history-empty">// NO ENTRIES LOGGED</div>';
+        return;
+      }
+
+      // Build sleep map: YYYY-MM-DD → sleep entry
+      const sleepMap = {};
+      loadSleepData().forEach(s => { sleepMap[s.date] = s; });
+
+      const rows = entries.map(e => {
+        const d       = new Date(e.ts);
+        const dateStr = d.toLocaleDateString('en-US', {
+          weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+        }).toUpperCase();
+        const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const dateKey = d.toISOString().slice(0, 10);
+        const sleep   = sleepMap[dateKey];
+
+        let sleepHtml = '';
+        if (sleep) {
+          const hours = (sleep.minutesAsleep / 60).toFixed(1);
+          const effColor = sleep.efficiency >= 90 ? 'var(--cyan)'
+                         : sleep.efficiency >= 80 ? 'var(--orange)' : '#ff4040';
+          const total = (sleep.deep + sleep.light + sleep.rem + sleep.wake) || 1;
+          const hasStages = sleep.deep || sleep.light || sleep.rem;
+          const stagesText = hasStages
+            ? `${sleep.deep}m deep · ${sleep.rem}m rem · ${sleep.light}m light`
+            : '';
+          const bar = hasStages ? `
+            <div class="entry-sleep-bar">
+              <div class="seg-deep"  style="width:${(sleep.deep /total*100).toFixed(1)}%"></div>
+              <div class="seg-rem"   style="width:${(sleep.rem  /total*100).toFixed(1)}%"></div>
+              <div class="seg-light" style="width:${(sleep.light/total*100).toFixed(1)}%"></div>
+              <div class="seg-wake"  style="width:${(sleep.wake /total*100).toFixed(1)}%"></div>
+            </div>` : '';
+          sleepHtml = `
+            <div class="entry-sleep">
+              <span class="entry-sleep-hours">// ${hours}h sleep</span>
+              ${sleep.efficiency ? `<span class="entry-sleep-eff" style="color:${effColor}">${sleep.efficiency}% eff</span>` : ''}
+              ${stagesText ? `<span class="entry-sleep-stages">${stagesText}</span>` : ''}
+              ${bar}
+            </div>`;
+        }
+
+        return `
+          <div class="history-entry">
+            <span class="entry-date">${dateStr} &nbsp; ${timeStr}</span>
+            <span class="entry-weight">${e.weight.toFixed(1)} LBS</span>
+            <span class="entry-range">${e.baseline.toFixed(1)} – ${e.max.toFixed(1)}</span>
+            <span class="entry-status ${e.status}">${e.status.toUpperCase()}</span>
+            ${sleepHtml}
+          </div>`;
+      }).join('');
+
+      container.innerHTML = `<div class="history-list">${rows}</div>`;
+    }
+
+    /* ── tabs ── */
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', ['today','history','sleep'][i] === name);
+      });
+      document.querySelectorAll('.panel').forEach(p => {
+        p.classList.toggle('active', p.id === `panel-${name}`);
+      });
+      if (name === 'history') renderHistory();
+      if (name === 'sleep')   renderSleep();
+    }
+
+    // ─────────────────────────────────────────────
+    //  SLEEP DATA
+    // ─────────────────────────────────────────────
+
+    const DRIVE_CLIENT_ID = '967854088805-3squevcgct66a8l9r405queaq9ht0ib5.apps.googleusercontent.com';
+    const DRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.readonly';
+    const SLEEP_KEY       = 'weightTrackerSleep';
+
+    let driveToken = null;
+
+    function loadSleepData() {
+      try { return JSON.parse(localStorage.getItem(SLEEP_KEY)) || []; }
+      catch { return []; }
+    }
+    function saveSleepData(entries) {
+      localStorage.setItem(SLEEP_KEY, JSON.stringify(entries));
+    }
+
+    /* ── Google Drive OAuth (implicit flow, no GIS library needed) ── */
+    function connectDrive() {
+      if (!window.location.href.startsWith('http://localhost') && !window.location.href.startsWith('http://127.0.0.1')) {
+        showSleepStatus('⚠ You must open this page via localhost, not from your file system. Open a new browser tab and go to: http://localhost:3000/weight-tracker.html — make sure the terminal with npx serve is still running.');
+        return;
+      }
+      // Use current page as redirect URI so it works on any port
+      const redirectUri = window.location.href.split('#')[0].split('?')[0];
+      const params = new URLSearchParams({
+        client_id:    DRIVE_CLIENT_ID,
+        redirect_uri: redirectUri,
+        response_type:'token',
+        scope:        DRIVE_SCOPE,
+        state:        'drive_auth',
+      });
+      // Save tab intent so we return to sleep tab after redirect
+      sessionStorage.setItem('pendingDriveAuth', '1');
+      window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
+    }
+
+    // Called on page load — checks if we've just returned from Google OAuth
+    function checkOAuthCallback() {
+      const hash = new URLSearchParams(window.location.hash.slice(1));
+      const token = hash.get('access_token');
+      const state = hash.get('state');
+      if (token && state === 'drive_auth') {
+        driveToken = token;
+        // Clean the token out of the URL
+        history.replaceState(null, '', window.location.pathname);
+        sessionStorage.removeItem('pendingDriveAuth');
+        // Switch to sleep tab and browse Drive
+        switchTab('sleep');
+        fetchSleepFilesFromDrive();
+      } else if (sessionStorage.getItem('pendingDriveAuth')) {
+        // Returned but no token — auth was cancelled or errored
+        sessionStorage.removeItem('pendingDriveAuth');
+        switchTab('sleep');
+        showSleepStatus('Google sign-in was cancelled or failed. Use the file import below instead.');
+      }
+    }
+
+    async function fetchSleepFilesFromDrive() {
+      showSleepStatus('Searching Google Drive for sleep data…');
+      try {
+        const q = encodeURIComponent("name contains 'sleep' and trashed = false");
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name+desc&pageSize=50&fields=files(id,name,mimeType,size)`,
+          { headers: { Authorization: `Bearer ${driveToken}` } }
+        );
+        const data = await res.json();
+        if (data.error) { showSleepStatus('Drive error: ' + data.error.message); return; }
+        if (!data.files?.length) {
+          showSleepStatus('No sleep files found on Drive. Try importing a file manually below.');
+          return;
+        }
+        showSleepStatus('');
+        renderDriveFilePicker(data.files);
+      } catch (e) {
+        showSleepStatus('Error accessing Drive: ' + e.message);
+      }
+    }
+
+    function renderDriveFilePicker(files) {
+      const el = document.getElementById('sleep-drive-picker');
+      el.innerHTML = `<div class="sleep-msg">Found ${files.length} file(s) — click to import:</div>`
+        + files.map(f =>
+          `<div class="drive-file-row" onclick="importDriveFile('${f.id}','${esc2(f.name)}')">
+            <span class="drive-file-name">${esc2(f.name)}</span>
+            <span class="drive-file-size">${f.size ? Math.round(f.size/1024)+' KB' : ''}</span>
+          </div>`
+        ).join('');
+    }
+
+    function esc2(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    async function importDriveFile(fileId, fileName) {
+      showSleepStatus(`Loading ${fileName}…`);
+      try {
+        const res  = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+          { headers: { Authorization: `Bearer ${driveToken}` } }
+        );
+        const text = await res.text();
+        let parsed = [];
+        if (/\.csv$/i.test(fileName)) {
+          parsed = parseSleepCSV(text);
+        } else {
+          try { parsed = parseFitbitSleepJSON(JSON.parse(text)); }
+          catch { parsed = parseSleepCSV(text); }
+        }
+        mergeSleepEntries(parsed, fileName);
+      } catch (e) {
+        showSleepStatus('Error reading file: ' + e.message);
+      }
+    }
+
+    /* ── Manual file import ── */
+    function importSleepFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          let parsed;
+          if (/\.csv$/i.test(file.name)) {
+            parsed = parseSleepCSV(e.target.result);
+          } else {
+            parsed = parseFitbitSleepJSON(JSON.parse(e.target.result));
+          }
+          mergeSleepEntries(parsed, file.name);
+        } catch (err) {
+          showSleepStatus('Parse error: ' + err.message);
+        }
+        input.value = '';
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+
+    /* ── Parsers ── */
+
+    // Fitbit JSON export: array of log objects, or {sleep:[...]}, or single object
+    function parseFitbitSleepJSON(json) {
+      const logs = Array.isArray(json) ? json : (json.sleep || json.data || [json]);
+      const result = [];
+      logs.forEach(log => {
+        if (!log || !log.dateOfSleep) return;
+        result.push({
+          date:          log.dateOfSleep,
+          minutesAsleep: log.minutesAsleep  || 0,
+          minutesAwake:  log.minutesAwake   || 0,
+          minutesInBed:  log.timeInBed      || 0,
+          efficiency:    log.efficiency     || 0,
+          startTime:     log.startTime      || '',
+          endTime:       log.endTime        || '',
+          deep:  log.levels?.summary?.deep?.minutes  || 0,
+          light: log.levels?.summary?.light?.minutes || 0,
+          rem:   log.levels?.summary?.rem?.minutes   || 0,
+          wake:  log.levels?.summary?.wake?.minutes  || 0,
+        });
+      });
+      return result;
+    }
+
+    // Parse date string in YYYY-MM-DD or YYYY.MM.DD format → "YYYY-MM-DD"
+    function extractDate(str) {
+      if (!str) return null;
+      const m = str.match(/(\d{4})[.\-\/](\d{2})[.\-\/](\d{2})/);
+      return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+    }
+
+    // Samsung Health epoch format: Date, Time, Duration in seconds, Sleep stage
+    // Each row is one epoch — sum them up into a single night entry
+    function parseSamsungEpochCSV(text) {
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+      if (lines.length < 2) return [];
+
+      const header = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
+      const iDate  = header.findIndex(h => h === 'date' || h === 'a');
+      const iDur   = header.findIndex(h => h.includes('duration') || h.includes('second'));
+      const iStage = header.findIndex(h => h.includes('stage'));
+      if (iDur < 0 || iStage < 0) return []; // not epoch format
+
+      const totals = { light: 0, deep: 0, rem: 0, awake: 0 };
+      let startDate = null;
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.replace(/"/g, '').trim());
+        const date  = extractDate(cols[iDate >= 0 ? iDate : 0] || '');
+        const dur   = parseInt(cols[iDur]) || 0;
+        const stage = (cols[iStage] || '').toLowerCase().trim();
+        if (!date || !dur) continue;
+        if (!startDate) startDate = date;
+        if (stage === 'light')        totals.light += dur;
+        else if (stage === 'deep')    totals.deep  += dur;
+        else if (stage === 'rem')     totals.rem   += dur;
+        else if (stage === 'awake')   totals.awake += dur;
+      }
+
+      if (!startDate) return [];
+
+      const asleepSec = totals.light + totals.deep + totals.rem;
+      const inBedSec  = asleepSec + totals.awake;
+
+      return [{
+        date:          startDate,
+        minutesAsleep: Math.round(asleepSec    / 60),
+        minutesAwake:  Math.round(totals.awake / 60),
+        minutesInBed:  Math.round(inBedSec     / 60),
+        efficiency:    inBedSec > 0 ? Math.round(asleepSec / inBedSec * 100) : 0,
+        startTime: '', endTime: '',
+        deep:  Math.round(totals.deep  / 60),
+        light: Math.round(totals.light / 60),
+        rem:   Math.round(totals.rem   / 60),
+        wake:  Math.round(totals.awake / 60),
+      }];
+    }
+
+    // Fitbit / Samsung Health summary CSV format (one row per night)
+    function parseSummaryCSV(text) {
+      const lines = text.split('\n')
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('#') && !l.startsWith('com.samsung'));
+      if (lines.length < 2) return [];
+
+      const header = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
+      const col = (...names) => {
+        for (const name of names) {
+          const i = header.findIndex(h => h.includes(name));
+          if (i >= 0) return i;
+        }
+        return -1;
+      };
+      const iEnd    = col('end time', 'end');
+      const iStart  = col('start time', 'start', 'date');
+      const iAsleep = col('total sleep time', 'asleep');
+      const iAwake  = col('awake time', 'awake');
+      const iBed    = col('time in bed', 'bed');
+      const iEff    = col('sleep efficiency', 'effic');
+      const iREM    = col('rem sleep', 'rem');
+      const iLight  = col('light sleep', 'light');
+      const iDeep   = col('deep sleep', 'deep');
+
+      const result = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols    = lines[i].split(',').map(c => c.replace(/"/g, '').trim());
+        const dateStr = extractDate(cols[iEnd] || '') || extractDate(cols[iStart] || '');
+        if (!dateStr) continue;
+        const minutesAsleep = parseInt(cols[iAsleep]) || 0;
+        const minutesAwake  = parseInt(cols[iAwake])  || 0;
+        result.push({
+          date:          dateStr,
+          minutesAsleep,
+          minutesAwake,
+          minutesInBed:  parseInt(cols[iBed]) || minutesAsleep + minutesAwake,
+          efficiency:    parseInt(cols[iEff]) || 0,
+          startTime:     cols[iStart] || '',
+          endTime:       cols[iEnd]   || '',
+          deep:  parseInt(cols[iDeep])  || 0,
+          light: parseInt(cols[iLight]) || 0,
+          rem:   parseInt(cols[iREM])   || 0,
+          wake:  minutesAwake,
+        });
+      }
+      return result;
+    }
+
+    // Dispatcher — detects epoch vs summary format
+    function parseSleepCSV(text) {
+      const epoch = parseSamsungEpochCSV(text);
+      if (epoch.length) return epoch;
+      return parseSummaryCSV(text);
+    }
+
+    function parseFitbitSleepCSV(text) { return parseSleepCSV(text); }
+
+    function mergeSleepEntries(entries, sourceName) {
+      if (!entries.length) { showSleepStatus('No sleep entries found in file.'); return; }
+      const existing     = loadSleepData();
+      const existingDates = new Set(existing.map(e => e.date));
+      let added = 0;
+      entries.forEach(e => {
+        if (!existingDates.has(e.date)) { existing.push(e); existingDates.add(e.date); added++; }
+      });
+      existing.sort((a, b) => b.date.localeCompare(a.date));
+      saveSleepData(existing);
+      const skipped = entries.length - added;
+      showSleepStatus(`Imported ${added} sleep entries` + (skipped ? ` (${skipped} duplicates skipped).` : '.'));
+      renderSleep();
+    }
+
+    function showSleepStatus(msg) {
+      const el = document.getElementById('sleep-status');
+      if (el) el.textContent = msg;
+    }
+
+    function clearSleepData() {
+      if (!confirm('Clear all sleep data?')) return;
+      saveSleepData([]);
+      document.getElementById('sleep-drive-picker').innerHTML = '';
+      showSleepStatus('Sleep data cleared.');
+      renderSleep();
+    }
+
+    /* ── Render ── */
+    function renderSleep() {
+      const entries     = loadSleepData();
+      const container   = document.getElementById('sleep-list');
+      if (!entries.length) {
+        container.innerHTML = '<div class="history-empty">// NO SLEEP DATA LOADED</div>';
+        return;
+      }
+
+      // Build weight map: YYYY-MM-DD → weight entry
+      const weightMap = {};
+      loadHistory().forEach(w => {
+        const d = new Date(w.ts).toISOString().slice(0, 10);
+        if (!weightMap[d]) weightMap[d] = w;
+      });
+
+      const rows = entries.map(e => {
+        const hoursAsleep  = (e.minutesAsleep / 60).toFixed(1);
+        const weightEntry  = weightMap[e.date];
+        const weightStr    = weightEntry
+          ? `<span class="sleep-weight ${weightEntry.status}">${weightEntry.weight.toFixed(1)} LBS</span>`
+          : `<span class="sleep-weight none">-- LBS</span>`;
+
+        const total = (e.deep + e.light + e.rem + e.wake) || e.minutesInBed || 1;
+        const hasStages = e.deep || e.light || e.rem;
+        const stagesBar = hasStages ? `
+          <div class="stages-bar">
+            ${e.deep  ? `<div class="stage-seg deep"  style="width:${(e.deep /total*100).toFixed(1)}%" title="Deep: ${e.deep}m"></div>` : ''}
+            ${e.rem   ? `<div class="stage-seg rem"   style="width:${(e.rem  /total*100).toFixed(1)}%" title="REM: ${e.rem}m"></div>`  : ''}
+            ${e.light ? `<div class="stage-seg light" style="width:${(e.light/total*100).toFixed(1)}%" title="Light: ${e.light}m"></div>` : ''}
+            ${e.wake  ? `<div class="stage-seg wake"  style="width:${(e.wake /total*100).toFixed(1)}%" title="Awake: ${e.wake}m"></div>` : ''}
+          </div>
+          <div class="stages-legend">
+            ${e.deep  ? `<span class="sl deep">Deep ${e.deep}m</span>`   : ''}
+            ${e.rem   ? `<span class="sl rem">REM ${e.rem}m</span>`       : ''}
+            ${e.light ? `<span class="sl light">Light ${e.light}m</span>` : ''}
+            ${e.wake  ? `<span class="sl wake">Awake ${e.wake}m</span>`  : ''}
+          </div>` : '';
+
+        const effColor = e.efficiency >= 90 ? 'var(--cyan)'
+                       : e.efficiency >= 80 ? 'var(--orange)' : '#ff4040';
+        const effStr   = e.efficiency
+          ? `<span style="color:${effColor};font-size:0.75rem">${e.efficiency}%</span>` : '';
+
+        return `<div class="sleep-entry">
+          <div class="sleep-row-top">
+            <span class="sleep-date">${e.date}</span>
+            <span class="sleep-hours">${hoursAsleep}h</span>
+            ${effStr}
+            ${weightStr}
+          </div>
+          ${stagesBar}
+        </div>`;
+      }).join('');
+
+      container.innerHTML = `<div class="history-list">${rows}</div>`;
+    }
+
+    // Check if we're returning from a Google OAuth redirect
+    checkOAuthCallback();
+
+    /* ── Enter key ── */
+    document.getElementById('weightInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') checkWeight();
+    });
+
+    updateReadouts();
+  </script>
+</body>
+</html>
