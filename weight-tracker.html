@@ -1104,8 +1104,8 @@
 
     /* ── Google Drive OAuth (implicit flow, no GIS library needed) ── */
     function connectDrive() {
-      if (!window.location.href.startsWith('http://localhost') && !window.location.href.startsWith('http://127.0.0.1')) {
-        showSleepStatus('⚠ You must open this page via localhost, not from your file system. Open a new browser tab and go to: http://localhost:3000/weight-tracker.html — make sure the terminal with npx serve is still running.');
+      if (window.location.protocol === 'file:') {
+        showSleepStatus('⚠ You must open this page via a web server, not directly from your file system. Use the hosted version at https://hellomydroogs.github.io/personal-hud/weight-tracker.html');
         return;
       }
       // Use current page as redirect URI so it works on any port
