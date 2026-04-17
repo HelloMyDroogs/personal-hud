@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FITNESS // TRACKER</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
@@ -618,6 +619,30 @@
       50%       { opacity: 0; }
     }
 
+    /* ── TREND CHART ── */
+    .trend-wrap {
+      border: 2px solid var(--border);
+      background: rgba(26, 16, 60, 0.55);
+    }
+    .trend-canvas-wrap {
+      padding: 0.75rem 0.75rem 0.25rem;
+      height: 220px;
+      position: relative;
+    }
+    .trend-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      padding: 0.4rem 0.75rem 0.6rem;
+      border-top: 1px solid var(--border);
+    }
+    .tl-item {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.06em;
+      opacity: 0.8;
+    }
+
     /* ── SLEEP PANEL ── */
     .sleep-controls {
       display: flex;
@@ -848,6 +873,28 @@
 
       <!-- ════ HISTORY PANEL ════ -->
       <div class="panel" id="panel-history">
+
+        <!-- Trend Chart -->
+        <div class="trend-wrap">
+          <div class="win-chrome">
+            <div class="win-dots">
+              <div class="dot dot-m"></div>
+              <div class="dot dot-c"></div>
+              <div class="dot dot-o"></div>
+            </div>
+            <span class="win-label">30-DAY TREND</span>
+          </div>
+          <div class="trend-canvas-wrap">
+            <canvas id="trend-chart"></canvas>
+          </div>
+          <div class="trend-legend">
+            <span class="tl-item" style="color:var(--cyan)">▬ Weight</span>
+            <span class="tl-item" style="color:rgba(139,92,246,0.7)">▬ Base–Max Band</span>
+            <span class="tl-item" style="color:var(--orange)">● Above max</span>
+            <span class="tl-item" style="color:#a78bfa">● Below base</span>
+            <span class="tl-item" style="color:rgba(255,0,255,0.5)">█ Sleep eff %</span>
+          </div>
+        </div>
 
         <div class="history-header">
           <span class="section-title">Entry Log</span>
@@ -1080,7 +1127,7 @@
       document.querySelectorAll('.panel').forEach(p => {
         p.classList.toggle('active', p.id === `panel-${name}`);
       });
-      if (name === 'history') renderHistory();
+      if (name === 'history') { renderHistory(); drawTrendChart(); }
       if (name === 'sleep')   renderSleep();
     }
 
@@ -1445,6 +1492,171 @@
 
     // Check if we're returning from a Google OAuth redirect
     checkOAuthCallback();
+
+    // ─────────────────────────────────────────────
+    //  TREND CHART
+    // ─────────────────────────────────────────────
+
+    let trendChart = null;
+
+    function drawTrendChart() {
+      const canvas = document.getElementById('trend-chart');
+      if (!canvas) return;
+
+      // Last 30 days
+      const days = [];
+      const today = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        days.push(d.toISOString().slice(0, 10));
+      }
+
+      // Weight map: date → most recent entry that day
+      const weightMap = {};
+      loadHistory().forEach(e => {
+        const d = new Date(e.ts).toISOString().slice(0, 10);
+        if (!weightMap[d]) weightMap[d] = e;
+      });
+
+      // Sleep map
+      const sleepMap = {};
+      loadSleepData().forEach(s => { sleepMap[s.date] = s; });
+
+      const labels       = days.map(d => { const dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); });
+      const weightData   = days.map(d => weightMap[d]?.weight ?? null);
+      const baselineData = days.map(d => baselineForDate(new Date(d + 'T12:00:00')));
+      const maxData      = days.map(d => parseFloat((baselineForDate(new Date(d + 'T12:00:00')) + MAX_OFFSET).toFixed(1)));
+      const sleepEff     = days.map(d => sleepMap[d]?.efficiency ?? null);
+
+      // Per-point colors for weight dots
+      const ptColor  = days.map((d, i) => {
+        const w = weightData[i];
+        if (w === null) return 'transparent';
+        if (w > maxData[i])      return '#FF9900';
+        if (w < baselineData[i]) return '#a78bfa';
+        return '#00FFFF';
+      });
+      const ptRadius = days.map((d, i) => {
+        const w = weightData[i];
+        if (w === null) return 0;
+        return (w > maxData[i] || w < baselineData[i]) ? 5 : 3;
+      });
+
+      if (trendChart) { trendChart.destroy(); trendChart = null; }
+
+      const mono = "'Share Tech Mono', monospace";
+
+      trendChart = new Chart(canvas.getContext('2d'), {
+        data: {
+          labels,
+          datasets: [
+            // Sleep efficiency bars — drawn first so they sit behind lines
+            {
+              type: 'bar',
+              label: 'Sleep Eff %',
+              data: sleepEff,
+              backgroundColor: 'rgba(255,0,255,0.13)',
+              borderColor:     'rgba(255,0,255,0.22)',
+              borderWidth: 1,
+              yAxisID: 'y2',
+              order: 4,
+            },
+            // Baseline lower bound
+            {
+              type: 'line',
+              label: 'Baseline',
+              data: baselineData,
+              borderColor:  'rgba(139,92,246,0.45)',
+              borderWidth:  1,
+              borderDash:   [5, 4],
+              pointRadius:  0,
+              fill:         false,
+              yAxisID:      'y1',
+              order:        3,
+            },
+            // Max upper bound — fills back to baseline
+            {
+              type: 'line',
+              label: 'Max',
+              data: maxData,
+              borderColor:      'rgba(139,92,246,0.45)',
+              borderWidth:      1,
+              borderDash:       [5, 4],
+              pointRadius:      0,
+              fill:             '-1',
+              backgroundColor:  'rgba(139,92,246,0.12)',
+              yAxisID:          'y1',
+              order:            3,
+            },
+            // Weight line
+            {
+              type: 'line',
+              label: 'Weight (lbs)',
+              data: weightData,
+              borderColor:         '#00FFFF',
+              borderWidth:         2,
+              pointBackgroundColor: ptColor,
+              pointBorderColor:     ptColor,
+              pointRadius:          ptRadius,
+              pointHoverRadius:     6,
+              fill:        false,
+              tension:     0.25,
+              spanGaps:    true,
+              yAxisID:     'y1',
+              order:       1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(9,0,20,0.95)',
+              borderColor:     'rgba(255,0,255,0.3)',
+              borderWidth:     1,
+              titleColor:      '#00FFFF',
+              bodyColor:       'rgba(224,224,224,0.8)',
+              titleFont: { family: mono, size: 11 },
+              bodyFont:  { family: mono, size: 10 },
+              callbacks: {
+                label: ctx => {
+                  if (ctx.dataset.label === 'Sleep Eff %')
+                    return ctx.parsed.y !== null ? ` Sleep: ${ctx.parsed.y}%` : null;
+                  if (ctx.dataset.label === 'Weight (lbs)')
+                    return ctx.parsed.y !== null ? ` Weight: ${ctx.parsed.y.toFixed(1)} lbs` : null;
+                  if (ctx.dataset.label === 'Baseline')
+                    return ` Base: ${ctx.parsed.y.toFixed(1)} lbs`;
+                  if (ctx.dataset.label === 'Max')
+                    return ` Max: ${ctx.parsed.y.toFixed(1)} lbs`;
+                  return null;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: { color: 'rgba(224,224,224,0.3)', font: { family: mono, size: 8 }, maxRotation: 45 },
+              grid:  { color: 'rgba(45,27,78,0.5)' },
+            },
+            y1: {
+              type: 'linear', position: 'left',
+              ticks: { color: 'rgba(0,255,255,0.5)', font: { family: mono, size: 9 }, callback: v => v.toFixed(1) },
+              grid:  { color: 'rgba(45,27,78,0.5)' },
+            },
+            y2: {
+              type: 'linear', position: 'right',
+              min: 0, max: 100,
+              ticks: { color: 'rgba(255,0,255,0.4)', font: { family: mono, size: 9 }, callback: v => v + '%' },
+              grid:  { drawOnChartArea: false },
+            },
+          },
+        },
+      });
+    }
 
     /* ── Enter key ── */
     document.getElementById('weightInput').addEventListener('keydown', e => {
