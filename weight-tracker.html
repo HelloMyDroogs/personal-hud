@@ -645,6 +645,22 @@
       opacity: 0.8;
     }
 
+    /* ── STEPS LIST ── */
+    .steps-entry {
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .steps-date  { font-family: var(--font-mono); font-size: 0.68rem; color: rgba(224,224,224,0.45); min-width: 90px; }
+    .steps-count { font-family: var(--font-head); font-size: 1.1rem; font-weight: 700; color: var(--cyan); text-shadow: 0 0 8px rgba(0,255,255,0.4); letter-spacing: 0.05em; }
+    .steps-meta  { font-family: var(--font-mono); font-size: 0.62rem; color: rgba(224,224,224,0.35); }
+    .steps-bar-wrap { flex: 1; min-width: 80px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+    .steps-bar   { height: 100%; background: var(--cyan); border-radius: 2px; opacity: 0.7; transition: width 0.3s; }
+
     /* ── IMPORT TAB ── */
     .import-section {
       border: 2px solid var(--border);
@@ -1000,9 +1016,9 @@
         <div id="sleep-list"></div>
       </div><!-- /panel-sleep -->
 
-      <!-- ════ STEPS PANEL (placeholder) ════ -->
+      <!-- ════ STEPS PANEL ════ -->
       <div class="panel" id="panel-steps">
-        <div class="history-empty">// NO STEPS DATA — IMPORT VIA // IMPORT TAB</div>
+        <div id="steps-list"></div>
       </div>
 
       <!-- ════ HEART PANEL (placeholder) ════ -->
@@ -1298,6 +1314,7 @@
       });
       if (name === 'history') { renderHistory(); drawTrendChart(); }
       if (name === 'sleep')   renderSleep();
+      if (name === 'steps')   renderSteps();
       if (name === 'import')  renderImportStats();
     }
 
@@ -1653,6 +1670,36 @@
     }
 
     function parseFitbitSleepCSV(text) { return parseSleepCSV(text); }
+
+    // ─────────────────────────────────────────────
+    //  STEPS DISPLAY
+    // ─────────────────────────────────────────────
+
+    function renderSteps() {
+      const entries   = loadStepsData();
+      const container = document.getElementById('steps-list');
+      if (!entries.length) {
+        container.innerHTML = '<div class="history-empty">// NO STEPS DATA — IMPORT VIA // IMPORT TAB</div>';
+        return;
+      }
+      const maxSteps = Math.max(...entries.map(e => e.steps));
+      const rows = entries.map(e => {
+        const pct   = maxSteps > 0 ? (e.steps / maxSteps * 100).toFixed(1) : 0;
+        const goal  = 10000;
+        const color = e.steps >= goal ? 'var(--cyan)' : e.steps >= goal * 0.7 ? 'var(--orange)' : '#ff4040';
+        const meta  = [
+          e.distance ? `${e.distance} km` : '',
+          e.calories ? `${e.calories} kcal` : '',
+        ].filter(Boolean).join(' · ');
+        return `<div class="steps-entry">
+          <span class="steps-date">${e.date}</span>
+          <span class="steps-count" style="color:${color};text-shadow:0 0 8px ${color}40">${e.steps.toLocaleString()}</span>
+          ${meta ? `<span class="steps-meta">${meta}</span>` : ''}
+          <div class="steps-bar-wrap"><div class="steps-bar" style="width:${pct}%;background:${color}"></div></div>
+        </div>`;
+      }).join('');
+      container.innerHTML = `<div class="history-list">${rows}</div>`;
+    }
 
     // ─────────────────────────────────────────────
     //  STEPS PARSER — Samsung Health epoch CSV
