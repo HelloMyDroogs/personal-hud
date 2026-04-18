@@ -148,7 +148,7 @@
     /* ── TABS ── */
     .tabs {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       border: 2px solid var(--border);
     }
 
@@ -156,17 +156,19 @@
       background: transparent;
       border: none;
       border-right: 2px solid var(--border);
+      border-bottom: 2px solid var(--border);
       color: rgba(224, 224, 224, 0.35);
       font-family: var(--font-mono);
-      font-size: 0.75rem;
-      letter-spacing: 0.3em;
-      padding: 0.8rem 0;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      padding: 0.65rem 0;
       cursor: pointer;
       text-transform: uppercase;
       transition: all 0.2s ease-linear;
       position: relative;
     }
-    .tab-btn:last-child { border-right: none; }
+    .tab-btn:nth-child(4n) { border-right: none; }
+    .tab-btn:nth-last-child(-n+4) { border-bottom: none; }
     .tab-btn:hover {
       color: var(--cyan);
       background: rgba(0, 255, 255, 0.05);
@@ -643,6 +645,89 @@
       opacity: 0.8;
     }
 
+    /* ── IMPORT TAB ── */
+    .import-section {
+      border: 2px solid var(--border);
+      background: rgba(26,16,60,0.55);
+    }
+    .import-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.55rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,0,255,0.04);
+    }
+    .import-section-title {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      color: var(--magenta);
+      text-shadow: 0 0 8px rgba(255,0,255,0.4);
+    }
+    .import-stats {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: rgba(224,224,224,0.35);
+      letter-spacing: 0.06em;
+      display: flex;
+      gap: 1rem;
+    }
+    .import-stat-val { color: var(--cyan); }
+    .import-body {
+      padding: 0.75rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .import-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .import-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: rgba(224,224,224,0.35);
+      text-transform: uppercase;
+      min-width: 80px;
+    }
+    .import-btn {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: transparent;
+      border: 1.5px solid var(--magenta);
+      color: var(--magenta);
+      padding: 0.3rem 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .import-btn:hover { background: rgba(255,0,255,0.1); }
+    .import-btn.cyan  { border-color: var(--cyan); color: var(--cyan); }
+    .import-btn.cyan:hover { background: rgba(0,255,255,0.08); }
+    .import-btn.dim   { border-color: rgba(224,224,224,0.2); color: rgba(224,224,224,0.3); cursor: default; }
+    .import-file-input { display: none; }
+    .import-status {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--orange);
+      letter-spacing: 0.06em;
+      min-height: 1em;
+      padding: 0 0.85rem 0.5rem;
+    }
+    .import-drive-picker { padding: 0 0.85rem 0.5rem; }
+    .placeholder-msg {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: rgba(224,224,224,0.2);
+      letter-spacing: 0.08em;
+      font-style: italic;
+    }
+
     /* ── SLEEP PANEL ── */
     .sleep-controls {
       display: flex;
@@ -782,9 +867,13 @@
 
       <!-- ── TABS ── -->
       <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('today')">// TODAY</button>
-        <button class="tab-btn"        onclick="switchTab('history')">// HISTORY</button>
-        <button class="tab-btn"        onclick="switchTab('sleep')">// SLEEP</button>
+        <button class="tab-btn active" data-tab="today"   onclick="switchTab('today')">// WEIGHT</button>
+        <button class="tab-btn"        data-tab="history" onclick="switchTab('history')">// HISTORY</button>
+        <button class="tab-btn"        data-tab="sleep"   onclick="switchTab('sleep')">// SLEEP</button>
+        <button class="tab-btn"        data-tab="import"  onclick="switchTab('import')">// IMPORT</button>
+        <button class="tab-btn"        data-tab="steps"   onclick="switchTab('steps')">// STEPS</button>
+        <button class="tab-btn"        data-tab="heart"   onclick="switchTab('heart')">// HEART</button>
+        <button class="tab-btn"        data-tab="overview" onclick="switchTab('overview')">// OVERVIEW</button>
       </div>
 
       <!-- ════ TODAY PANEL ════ -->
@@ -907,43 +996,129 @@
 
       </div><!-- /panel-history -->
 
-      <!-- ════ SLEEP PANEL ════ -->
+      <!-- ════ SLEEP PANEL (read-only) ════ -->
       <div class="panel" id="panel-sleep">
+        <div id="sleep-list"></div>
+      </div><!-- /panel-sleep -->
 
-        <div class="sleep-controls">
-          <div class="win-chrome">
-            <div class="win-dots">
-              <div class="dot dot-m"></div>
-              <div class="dot dot-c"></div>
-              <div class="dot dot-o"></div>
+      <!-- ════ STEPS PANEL (placeholder) ════ -->
+      <div class="panel" id="panel-steps">
+        <div class="history-empty">// NO STEPS DATA — IMPORT VIA // IMPORT TAB</div>
+      </div>
+
+      <!-- ════ HEART PANEL (placeholder) ════ -->
+      <div class="panel" id="panel-heart">
+        <div class="history-empty">// NO HEART RATE DATA — IMPORT VIA // IMPORT TAB</div>
+      </div>
+
+      <!-- ════ OVERVIEW PANEL (placeholder) ════ -->
+      <div class="panel" id="panel-overview">
+        <div class="history-empty">// OVERVIEW COMING SOON</div>
+      </div>
+
+      <!-- ════ IMPORT PANEL ════ -->
+      <div class="panel" id="panel-import">
+
+        <!-- Drive connection status -->
+        <div id="import-drive-status" class="import-status"></div>
+
+        <!-- ── WEIGHT ── -->
+        <div class="import-section">
+          <div class="import-section-head">
+            <span class="import-section-title">// WEIGHT</span>
+            <div class="import-stats">
+              <span>Records: <span class="import-stat-val" id="stat-weight-count">--</span></span>
+              <span>Last: <span class="import-stat-val" id="stat-weight-last">--</span></span>
             </div>
-            <span class="win-label">DATA SOURCE</span>
           </div>
-
-          <!-- Google Drive -->
-          <div class="sleep-ctrl-row">
-            <span class="sleep-ctrl-label">Google Drive</span>
-            <button class="sleep-btn" onclick="connectDrive()">Connect &amp; Browse</button>
-          </div>
-          <div id="sleep-drive-picker"></div>
-
-          <!-- Manual import -->
-          <div class="sleep-ctrl-row">
-            <span class="sleep-ctrl-label">Import File</span>
-            <button class="sleep-btn cyan" onclick="document.getElementById('sleepFileInput').click()">Upload Fitbit Export</button>
-            <input class="sleep-file-input" type="file" id="sleepFileInput" accept=".json,.csv" onchange="importSleepFile(this)">
-          </div>
-
-          <div id="sleep-status" class="sleep-status"></div>
-
-          <div class="sleep-ctrl-row" style="justify-content:flex-end">
-            <button class="sleep-btn danger" onclick="clearSleepData()">Clear Sleep Data</button>
+          <div class="import-body">
+            <div class="import-row">
+              <span class="import-label">Manual</span>
+              <span class="placeholder-msg">Log weight on the // WEIGHT tab</span>
+            </div>
+            <div class="import-row">
+              <span class="import-label">Withings CSV</span>
+              <button class="import-btn dim" disabled>Coming Soon</button>
+            </div>
           </div>
         </div>
 
-        <div id="sleep-list"></div>
+        <!-- ── SLEEP ── -->
+        <div class="import-section">
+          <div class="import-section-head">
+            <span class="import-section-title">// SLEEP</span>
+            <div class="import-stats">
+              <span>Records: <span class="import-stat-val" id="stat-sleep-count">--</span></span>
+              <span>Last: <span class="import-stat-val" id="stat-sleep-last">--</span></span>
+            </div>
+          </div>
+          <div class="import-body">
+            <div class="import-row">
+              <span class="import-label">Google Drive</span>
+              <button class="import-btn" onclick="connectAndBrowse('sleep')">Connect &amp; Browse</button>
+            </div>
+            <div class="import-row">
+              <span class="import-label">Upload File</span>
+              <button class="import-btn cyan" onclick="document.getElementById('sleepFileInput').click()">Samsung / Fitbit CSV</button>
+              <input class="import-file-input" type="file" id="sleepFileInput" accept=".json,.csv" onchange="importSleepFile(this)">
+            </div>
+            <div class="import-row" style="justify-content:flex-end">
+              <button class="import-btn" style="border-color:#ff4040;color:#ff4040;font-size:0.6rem" onclick="clearSleepData()">Clear Sleep Data</button>
+            </div>
+          </div>
+          <div class="import-drive-picker" id="sleep-drive-picker"></div>
+          <div class="import-status" id="sleep-status"></div>
+        </div>
 
-      </div><!-- /panel-sleep -->
+        <!-- ── STEPS ── -->
+        <div class="import-section">
+          <div class="import-section-head">
+            <span class="import-section-title">// STEPS</span>
+            <div class="import-stats">
+              <span>Records: <span class="import-stat-val" id="stat-steps-count">--</span></span>
+              <span>Last: <span class="import-stat-val" id="stat-steps-last">--</span></span>
+            </div>
+          </div>
+          <div class="import-body">
+            <div class="import-row">
+              <span class="import-label">Google Drive</span>
+              <button class="import-btn" onclick="connectAndBrowse('steps')">Connect &amp; Browse</button>
+            </div>
+            <div class="import-row">
+              <span class="import-label">Upload File</span>
+              <button class="import-btn cyan" onclick="document.getElementById('stepsFileInput').click()">Samsung / Fitbit CSV</button>
+              <input class="import-file-input" type="file" id="stepsFileInput" accept=".json,.csv" onchange="importStepsFile(this)">
+            </div>
+          </div>
+          <div class="import-drive-picker" id="steps-drive-picker"></div>
+          <div class="import-status" id="steps-status"></div>
+        </div>
+
+        <!-- ── HEART RATE ── -->
+        <div class="import-section">
+          <div class="import-section-head">
+            <span class="import-section-title">// HEART RATE</span>
+            <div class="import-stats">
+              <span>Records: <span class="import-stat-val" id="stat-hr-count">--</span></span>
+              <span>Last: <span class="import-stat-val" id="stat-hr-last">--</span></span>
+            </div>
+          </div>
+          <div class="import-body">
+            <div class="import-row">
+              <span class="import-label">Google Drive</span>
+              <button class="import-btn" onclick="connectAndBrowse('hr')">Connect &amp; Browse</button>
+            </div>
+            <div class="import-row">
+              <span class="import-label">Upload File</span>
+              <button class="import-btn cyan" onclick="document.getElementById('hrFileInput').click()">Samsung / Fitbit CSV</button>
+              <input class="import-file-input" type="file" id="hrFileInput" accept=".json,.csv" onchange="importHRFile(this)">
+            </div>
+          </div>
+          <div class="import-drive-picker" id="hr-drive-picker"></div>
+          <div class="import-status" id="hr-status"></div>
+        </div>
+
+      </div><!-- /panel-import -->
 
       <!-- ── FOOTER ── -->
       <div class="footer">
@@ -1121,14 +1296,15 @@
 
     /* ── tabs ── */
     function switchTab(name) {
-      document.querySelectorAll('.tab-btn').forEach((b, i) => {
-        b.classList.toggle('active', ['today','history','sleep'][i] === name);
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === name);
       });
       document.querySelectorAll('.panel').forEach(p => {
         p.classList.toggle('active', p.id === `panel-${name}`);
       });
       if (name === 'history') { renderHistory(); drawTrendChart(); }
       if (name === 'sleep')   renderSleep();
+      if (name === 'import')  renderImportStats();
     }
 
     // ─────────────────────────────────────────────
@@ -1138,84 +1314,134 @@
     const DRIVE_CLIENT_ID = '967854088805-3squevcgct66a8l9r405queaq9ht0ib5.apps.googleusercontent.com';
     const DRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.readonly';
     const SLEEP_KEY       = 'weightTrackerSleep';
+    const STEPS_KEY       = 'fitnessSteps';
+    const HR_KEY          = 'fitnessHR';
 
-    let driveToken = null;
+    // Drive search keywords per section
+    const DRIVE_KEYWORDS  = { sleep: 'sleep', steps: 'step', hr: 'heart' };
+
+    let driveToken = sessionStorage.getItem('driveToken') || null;
 
     function loadSleepData() {
       try { return JSON.parse(localStorage.getItem(SLEEP_KEY)) || []; }
       catch { return []; }
     }
-    function saveSleepData(entries) {
-      localStorage.setItem(SLEEP_KEY, JSON.stringify(entries));
+    function saveSleepData(entries) { localStorage.setItem(SLEEP_KEY, JSON.stringify(entries)); }
+
+    function loadStepsData() {
+      try { return JSON.parse(localStorage.getItem(STEPS_KEY)) || []; }
+      catch { return []; }
+    }
+    function saveStepsData(entries) { localStorage.setItem(STEPS_KEY, JSON.stringify(entries)); }
+
+    function loadHRData() {
+      try { return JSON.parse(localStorage.getItem(HR_KEY)) || []; }
+      catch { return []; }
+    }
+    function saveHRData(entries) { localStorage.setItem(HR_KEY, JSON.stringify(entries)); }
+
+    /* ── Import stats ── */
+    function getDataStats(loaderFn) {
+      const data = loaderFn();
+      if (!data.length) return { count: 0, last: '--' };
+      const sorted = [...data].sort((a, b) => (b.date || b.ts || '').localeCompare(a.date || a.ts || ''));
+      return { count: data.length, last: (sorted[0]?.date || new Date(sorted[0]?.ts).toISOString().slice(0,10) || '--') };
     }
 
-    /* ── Google Drive OAuth (implicit flow, no GIS library needed) ── */
-    function connectDrive() {
+    function renderImportStats() {
+      const w = getDataStats(loadHistory);
+      const s = getDataStats(loadSleepData);
+      const st = getDataStats(loadStepsData);
+      const hr = getDataStats(loadHRData);
+      document.getElementById('stat-weight-count').textContent = w.count;
+      document.getElementById('stat-weight-last').textContent  = w.last;
+      document.getElementById('stat-sleep-count').textContent  = s.count;
+      document.getElementById('stat-sleep-last').textContent   = s.last;
+      document.getElementById('stat-steps-count').textContent  = st.count;
+      document.getElementById('stat-steps-last').textContent   = st.last;
+      document.getElementById('stat-hr-count').textContent     = hr.count;
+      document.getElementById('stat-hr-last').textContent      = hr.last;
+    }
+
+    /* ── Google Drive OAuth (implicit flow) ── */
+    function connectAndBrowse(section) {
       if (window.location.protocol === 'file:') {
-        showSleepStatus('⚠ You must open this page via a web server, not directly from your file system. Use the hosted version at https://hellomydroogs.github.io/personal-hud/weight-tracker.html');
+        showImportStatus(section, '⚠ Open the hosted version to use Google Drive: https://hellomydroogs.github.io/personal-hud/weight-tracker.html');
         return;
       }
-      // Use current page as redirect URI so it works on any port
+      if (driveToken) {
+        // Already have a token — go straight to browsing
+        browseDriveSection(section);
+        return;
+      }
       const redirectUri = window.location.href.split('#')[0].split('?')[0];
       const params = new URLSearchParams({
-        client_id:    DRIVE_CLIENT_ID,
-        redirect_uri: redirectUri,
-        response_type:'token',
-        scope:        DRIVE_SCOPE,
-        state:        'drive_auth',
+        client_id:     DRIVE_CLIENT_ID,
+        redirect_uri:  redirectUri,
+        response_type: 'token',
+        scope:         DRIVE_SCOPE,
+        state:         'drive_auth',
       });
-      // Save tab intent so we return to sleep tab after redirect
       sessionStorage.setItem('pendingDriveAuth', '1');
+      sessionStorage.setItem('pendingSection', section);
       window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
     }
 
     // Called on page load — checks if we've just returned from Google OAuth
     function checkOAuthCallback() {
-      const hash = new URLSearchParams(window.location.hash.slice(1));
-      const token = hash.get('access_token');
-      const state = hash.get('state');
+      const hash    = new URLSearchParams(window.location.hash.slice(1));
+      const token   = hash.get('access_token');
+      const state   = hash.get('state');
+      const section = sessionStorage.getItem('pendingSection') || 'sleep';
       if (token && state === 'drive_auth') {
         driveToken = token;
-        // Clean the token out of the URL
+        sessionStorage.setItem('driveToken', token);
         history.replaceState(null, '', window.location.pathname);
         sessionStorage.removeItem('pendingDriveAuth');
-        // Switch to sleep tab and browse Drive
-        switchTab('sleep');
-        fetchSleepFilesFromDrive();
+        sessionStorage.removeItem('pendingSection');
+        switchTab('import');
+        browseDriveSection(section);
       } else if (sessionStorage.getItem('pendingDriveAuth')) {
-        // Returned but no token — auth was cancelled or errored
         sessionStorage.removeItem('pendingDriveAuth');
-        switchTab('sleep');
-        showSleepStatus('Google sign-in was cancelled or failed. Use the file import below instead.');
+        sessionStorage.removeItem('pendingSection');
+        switchTab('import');
+        showImportStatus(section, 'Google sign-in was cancelled. Try again or upload a file manually.');
       }
     }
 
-    async function fetchSleepFilesFromDrive() {
-      showSleepStatus('Searching Google Drive for sleep data…');
+    function showImportStatus(section, msg) {
+      const el = document.getElementById(`${section}-status`);
+      if (el) el.textContent = msg;
+    }
+
+    async function browseDriveSection(section) {
+      const keyword = DRIVE_KEYWORDS[section] || section;
+      showImportStatus(section, `Searching Google Drive for ${section} data…`);
       try {
-        const q = encodeURIComponent("name contains 'sleep' and trashed = false");
+        const q = encodeURIComponent(`name contains '${keyword}' and trashed = false`);
         const res = await fetch(
           `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name+desc&pageSize=50&fields=files(id,name,mimeType,size)`,
           { headers: { Authorization: `Bearer ${driveToken}` } }
         );
         const data = await res.json();
-        if (data.error) { showSleepStatus('Drive error: ' + data.error.message); return; }
-        if (!data.files?.length) {
-          showSleepStatus('No sleep files found on Drive. Try importing a file manually below.');
-          return;
+        if (data.error) {
+          if (data.error.code === 401) { driveToken = null; sessionStorage.removeItem('driveToken'); }
+          showImportStatus(section, 'Drive error: ' + data.error.message); return;
         }
-        showSleepStatus('');
-        renderDriveFilePicker(data.files);
+        if (!data.files?.length) { showImportStatus(section, `No ${section} files found on Drive.`); return; }
+        showImportStatus(section, '');
+        renderDrivePicker(section, data.files);
       } catch (e) {
-        showSleepStatus('Error accessing Drive: ' + e.message);
+        showImportStatus(section, 'Error: ' + e.message);
       }
     }
 
-    function renderDriveFilePicker(files) {
-      const el = document.getElementById('sleep-drive-picker');
+    function renderDrivePicker(section, files) {
+      const el = document.getElementById(`${section}-drive-picker`);
+      if (!el) return;
       el.innerHTML = `<div class="sleep-msg">Found ${files.length} file(s) — click to import:</div>`
         + files.map(f =>
-          `<div class="drive-file-row" onclick="importDriveFile('${f.id}','${esc2(f.name)}')">
+          `<div class="drive-file-row" onclick="importDriveFile('${f.id}','${esc2(f.name)}','${section}')">
             <span class="drive-file-name">${esc2(f.name)}</span>
             <span class="drive-file-size">${f.size ? Math.round(f.size/1024)+' KB' : ''}</span>
           </div>`
@@ -1224,8 +1450,8 @@
 
     function esc2(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-    async function importDriveFile(fileId, fileName) {
-      showSleepStatus(`Loading ${fileName}…`);
+    async function importDriveFile(fileId, fileName, section = 'sleep') {
+      showImportStatus(section, `Loading ${fileName}…`);
       try {
         const res  = await fetch(
           `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
@@ -1239,10 +1465,20 @@
           try { parsed = parseFitbitSleepJSON(JSON.parse(text)); }
           catch { parsed = parseSleepCSV(text); }
         }
-        mergeSleepEntries(parsed, fileName);
+        mergeSleepEntries(parsed, fileName, section);
       } catch (e) {
-        showSleepStatus('Error reading file: ' + e.message);
+        showImportStatus(section, 'Error reading file: ' + e.message);
       }
+    }
+
+    /* ── Stub importers for Steps and HR (file upload) ── */
+    function importStepsFile(input) {
+      showImportStatus('steps', 'Steps import coming soon — parser not yet implemented.');
+      input.value = '';
+    }
+    function importHRFile(input) {
+      showImportStatus('hr', 'Heart rate import coming soon — parser not yet implemented.');
+      input.value = '';
     }
 
     /* ── Manual file import ── */
@@ -1258,9 +1494,9 @@
           } else {
             parsed = parseFitbitSleepJSON(JSON.parse(e.target.result));
           }
-          mergeSleepEntries(parsed, file.name);
+          mergeSleepEntries(parsed, file.name, 'sleep');
         } catch (err) {
-          showSleepStatus('Parse error: ' + err.message);
+          showImportStatus('sleep', 'Parse error: ' + err.message);
         }
         input.value = '';
       };
@@ -1404,8 +1640,8 @@
 
     function parseFitbitSleepCSV(text) { return parseSleepCSV(text); }
 
-    function mergeSleepEntries(entries, sourceName) {
-      if (!entries.length) { showSleepStatus('No sleep entries found in file.'); return; }
+    function mergeSleepEntries(entries, sourceName, section = 'sleep') {
+      if (!entries.length) { showImportStatus(section, 'No sleep entries found in file.'); return; }
       const existing     = loadSleepData();
       const existingDates = new Set(existing.map(e => e.date));
       let added = 0;
@@ -1415,11 +1651,13 @@
       existing.sort((a, b) => b.date.localeCompare(a.date));
       saveSleepData(existing);
       const skipped = entries.length - added;
-      showSleepStatus(`Imported ${added} sleep entries` + (skipped ? ` (${skipped} duplicates skipped).` : '.'));
+      showImportStatus(section, `Imported ${added} sleep entries` + (skipped ? ` (${skipped} duplicates skipped).` : '.'));
       renderSleep();
+      renderImportStats();
     }
 
-    function showSleepStatus(msg) {
+    function showSleepStatus(msg) { showImportStatus('sleep', msg); }
+    function _legacySleepStatus(msg) {
       const el = document.getElementById('sleep-status');
       if (el) el.textContent = msg;
     }
@@ -1427,9 +1665,11 @@
     function clearSleepData() {
       if (!confirm('Clear all sleep data?')) return;
       saveSleepData([]);
-      document.getElementById('sleep-drive-picker').innerHTML = '';
-      showSleepStatus('Sleep data cleared.');
+      const picker = document.getElementById('sleep-drive-picker');
+      if (picker) picker.innerHTML = '';
+      showImportStatus('sleep', 'Sleep data cleared.');
       renderSleep();
+      renderImportStats();
     }
 
     /* ── Render ── */
