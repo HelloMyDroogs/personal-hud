@@ -1266,7 +1266,7 @@
           weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
         }).toUpperCase();
         const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        const dateKey = d.toISOString().slice(0, 10);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const sleep   = sleepMap[dateKey];
         const steps   = stepsMap[dateKey];
 
@@ -1827,7 +1827,8 @@
       // Build weight map: YYYY-MM-DD → weight entry
       const weightMap = {};
       loadHistory().forEach(w => {
-        const d = new Date(w.ts).toISOString().slice(0, 10);
+        const _dw = new Date(w.ts);
+        const d = `${_dw.getFullYear()}-${String(_dw.getMonth()+1).padStart(2,'0')}-${String(_dw.getDate()).padStart(2,'0')}`;
         if (!weightMap[d]) weightMap[d] = w;
       });
 
@@ -1892,13 +1893,14 @@
       for (let i = 29; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        days.push(d.toISOString().slice(0, 10));
+        days.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
       }
 
       // Weight map: date → most recent entry that day
       const weightMap = {};
       loadHistory().forEach(e => {
-        const d = new Date(e.ts).toISOString().slice(0, 10);
+        const _de = new Date(e.ts);
+        const d = `${_de.getFullYear()}-${String(_de.getMonth()+1).padStart(2,'0')}-${String(_de.getDate()).padStart(2,'0')}`;
         if (!weightMap[d]) weightMap[d] = e;
       });
 
