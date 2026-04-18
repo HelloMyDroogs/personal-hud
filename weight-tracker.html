@@ -1312,7 +1312,8 @@
     const HR_KEY          = 'fitnessHR';
 
     // Drive search keywords per section
-    const DRIVE_KEYWORDS  = { sleep: 'sleep', steps: 'step', hr: 'heart' };
+    const DRIVE_KEYWORDS  = { sleep: 'sleep', steps: 'Steps', hr: 'heart' };
+    const DRIVE_EXTRAS    = { steps: " and name contains 'Samsung' and mimeType = 'text/plain'", sleep: '', hr: '' };
 
     let driveToken = sessionStorage.getItem('driveToken') || null;
 
@@ -1412,7 +1413,8 @@
       const keyword = DRIVE_KEYWORDS[section] || section;
       showImportStatus(section, `Searching Google Drive for ${section} data…`);
       try {
-        const q = encodeURIComponent(`name contains '${keyword}' and trashed = false`);
+        const extra = DRIVE_EXTRAS[section] || '';
+        const q = encodeURIComponent(`name contains '${keyword}' and trashed = false${extra}`);
         const res = await fetch(
           `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=name+desc&pageSize=50&fields=files(id,name,mimeType,size)`,
           { headers: { Authorization: `Bearer ${driveToken}` } }
@@ -1452,26 +1454,44 @@
           { headers: { Authorization: `Bearer ${driveToken}` } }
         );
         const text = await res.text();
-        let parsed = [];
-        if (/\.csv$/i.test(fileName)) {
-          parsed = parseSleepCSV(text);
+        if (section === 'steps') {
+          const parsed = parseSamsungStepsCSV(text);
+          mergeStepsEntries(parsed, fileName);
+        } else if (section === 'hr') {
+          showImportStatus('hr', 'Heart rate parser coming soon.');
         } else {
-          try { parsed = parseFitbitSleepJSON(JSON.parse(text)); }
-          catch { parsed = parseSleepCSV(text); }
+          let parsed = [];
+          if (/\.csv$/i.test(fileName)) {
+            parsed = parseSleepCSV(text);
+          } else {
+            try { parsed = parseFitbitSleepJSON(JSON.parse(text)); }
+            catch { parsed = parseSleepCSV(text); }
+          }
+          mergeSleepEntries(parsed, fileName, section);
         }
-        mergeSleepEntries(parsed, fileName, section);
       } catch (e) {
         showImportStatus(section, 'Error reading file: ' + e.message);
       }
     }
 
-    /* ── Stub importers for Steps and HR (file upload) ── */
+    /* ── File upload importers ── */
     function importStepsFile(input) {
-      showImportStatus('steps', 'Steps import coming soon — parser not yet implemented.');
-      input.value = '';
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const parsed = parseSamsungStepsCSV(e.target.result);
+          mergeStepsEntries(parsed, file.name);
+        } catch (err) {
+          showImportStatus('steps', 'Parse error: ' + err.message);
+        }
+        input.value = '';
+      };
+      reader.readAsText(file, 'utf-8');
     }
     function importHRFile(input) {
-      showImportStatus('hr', 'Heart rate import coming soon — parser not yet implemented.');
+      showImportStatus('hr', 'Heart rate import coming soon.');
       input.value = '';
     }
 
@@ -1633,6 +1653,63 @@
     }
 
     function parseFitbitSleepCSV(text) { return parseSleepCSV(text); }
+
+    // ─────────────────────────────────────────────
+    //  STEPS PARSER — Samsung Health epoch CSV
+    //  Each row: Date/Start time, Step count, Distance, Calorie
+    //  Sums all epochs for the day into one record
+    // ─────────────────────────────────────────────
+    function parseSamsungStepsCSV(text) {
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+      if (lines.length < 2) return [];
+
+      const header = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
+      const col = (...names) => { for (const n of names) { const i = header.findIndex(h => h.includes(n)); if (i >= 0) return i; } return -1; };
+
+      const iDate  = col('start time', 'date', 'time');
+      const iSteps = col('step count', 'steps', 'count');
+      const iDist  = col('distance');
+      const iCal   = col('calorie', 'calories');
+
+      if (iSteps < 0) return [];
+
+      // Accumulate by date
+      const byDate = {};
+      for (let i = 1; i < lines.length; i++) {
+        const cols  = lines[i].split(',').map(c => c.replace(/"/g, '').trim());
+        const date  = extractDate(cols[iDate >= 0 ? iDate : 0] || '');
+        const steps = parseInt(cols[iSteps]) || 0;
+        const dist  = parseFloat(cols[iDist])  || 0;
+        const cal   = parseFloat(cols[iCal])   || 0;
+        if (!date) continue;
+        if (!byDate[date]) byDate[date] = { steps: 0, distance: 0, calories: 0 };
+        byDate[date].steps    += steps;
+        byDate[date].distance += dist;
+        byDate[date].calories += cal;
+      }
+
+      return Object.entries(byDate).map(([date, v]) => ({
+        date,
+        steps:    v.steps,
+        distance: parseFloat(v.distance.toFixed(2)),
+        calories: Math.round(v.calories),
+      })).filter(r => r.steps > 0);
+    }
+
+    function mergeStepsEntries(entries, sourceName) {
+      if (!entries.length) { showImportStatus('steps', 'No step entries found in file.'); return; }
+      const existing      = loadStepsData();
+      const existingDates = new Set(existing.map(e => e.date));
+      let added = 0;
+      entries.forEach(e => {
+        if (!existingDates.has(e.date)) { existing.push(e); existingDates.add(e.date); added++; }
+      });
+      existing.sort((a, b) => b.date.localeCompare(a.date));
+      saveStepsData(existing);
+      const skipped = entries.length - added;
+      showImportStatus('steps', `Imported ${added} days of steps` + (skipped ? ` (${skipped} duplicates skipped).` : '.'));
+      renderImportStats();
+    }
 
     function mergeSleepEntries(entries, sourceName, section = 'sleep') {
       if (!entries.length) { showImportStatus(section, 'No sleep entries found in file.'); return; }
