@@ -148,7 +148,7 @@
     /* ── TABS ── */
     .tabs {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       border: 2px solid var(--border);
     }
 
@@ -167,8 +167,8 @@
       transition: all 0.2s ease-linear;
       position: relative;
     }
-    .tab-btn:nth-child(4n) { border-right: none; }
-    .tab-btn:nth-last-child(-n+4) { border-bottom: none; }
+    .tab-btn:nth-child(3n) { border-right: none; }
+    .tab-btn:nth-last-child(-n+3) { border-bottom: none; }
     .tab-btn:hover {
       color: var(--cyan);
       background: rgba(0, 255, 255, 0.05);
@@ -868,12 +868,11 @@
       <!-- ── TABS ── -->
       <div class="tabs">
         <button class="tab-btn active" data-tab="today"   onclick="switchTab('today')">// WEIGHT</button>
-        <button class="tab-btn"        data-tab="history" onclick="switchTab('history')">// HISTORY</button>
+        <button class="tab-btn"        data-tab="history" onclick="switchTab('history')">// OVERVIEW</button>
         <button class="tab-btn"        data-tab="sleep"   onclick="switchTab('sleep')">// SLEEP</button>
         <button class="tab-btn"        data-tab="import"  onclick="switchTab('import')">// IMPORT</button>
         <button class="tab-btn"        data-tab="steps"   onclick="switchTab('steps')">// STEPS</button>
         <button class="tab-btn"        data-tab="heart"   onclick="switchTab('heart')">// HEART</button>
-        <button class="tab-btn"        data-tab="overview" onclick="switchTab('overview')">// OVERVIEW</button>
       </div>
 
       <!-- ════ TODAY PANEL ════ -->
@@ -1009,11 +1008,6 @@
       <!-- ════ HEART PANEL (placeholder) ════ -->
       <div class="panel" id="panel-heart">
         <div class="history-empty">// NO HEART RATE DATA — IMPORT VIA // IMPORT TAB</div>
-      </div>
-
-      <!-- ════ OVERVIEW PANEL (placeholder) ════ -->
-      <div class="panel" id="panel-overview">
-        <div class="history-empty">// OVERVIEW COMING SOON</div>
       </div>
 
       <!-- ════ IMPORT PANEL ════ -->
